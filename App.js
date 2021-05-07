@@ -1,22 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react'
-import {SafeAreaView, View, TouchableOpacity, Text, Alert} from 'react-native'
+import { SafeAreaView, View, TouchableOpacity, Text, ScrollView } from 'react-native'
 import WebView from 'react-native-webview'
-
 import StaticServer from 'react-native-static-server';
 import RNFS from 'react-native-fs';
 
-// path where files will be served from (index.html here)
-let path = RNFS.MainBundlePath + '/sf';
-let server = new StaticServer(8080, path);
-
 export default function App() {
   const [url, setURL] = useState()
+  const [messages, setMessages] = useState([])
+
   useEffect(() => {
-    (async () => {
-      let url = await server.start()
-      setURL(url)
-    })()
-    return () => server.stop()
+    const server = new StaticServer(
+      8089,
+      RNFS.MainBundlePath + '/sf',
+      { localOnly: true },
+    )
+    server.start()
+      .then(url => setURL(url))
+      .catch(console.log)
+
+    return () => {
+      if (server && server.isRunning()) {
+        server.stop()
+      }
+    }
   }, [])
   const wv = useRef(null)
 
@@ -40,10 +46,13 @@ export default function App() {
       <View style={{
         flex: 1
       }}>
-        <Text>Works!</Text>
-        <TouchableOpacity onPress={() => {
+        <TouchableOpacity 
+        style={{
+          height: 20
+        }}
+        onPress={() => {
           if (!wv.current) return
-          const msg = "go depth 1"
+          const msg = "go depth 10"
           wv.current.injectJavaScript(`
           setTimeout(function () {
             stockfish.postMessage("${msg}"); true;
@@ -52,17 +61,28 @@ export default function App() {
           `)
         }}>
           <Text>
-            Send "go depth 1"
+            Click to send "go depth 10"
           </Text>
         </TouchableOpacity>
+        <ScrollView style={{
+          flex: 1,
+          borderWidth: 1,
+          borderColor: "#ccc",
+          padding: 10,
+          marginVertical: 10
+        }}>
+          {
+            messages.length > 0 ? messages.map((item, id) => <Text key={id}>{item}</Text>) : <Text>No messages yet!</Text>
+          }
+        </ScrollView>
       </View>
       <View>
-        {url && <WebView 
-        ref={ref => wv.current = ref}
+        {url && <WebView
+          ref={ref => wv.current = ref}
           onMessage={(event) => {
-            Alert.alert('SF', event.nativeEvent.data)
+            let temp = event.nativeEvent.data
+            setMessages([...messages, temp])
           }}
-          // source={require('./wk/index.html')}
           source={{
             uri: url
           }}
