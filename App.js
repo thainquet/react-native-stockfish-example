@@ -27,7 +27,7 @@ export default function App() {
   const wv = useRef(null)
 
   const run = `
-      var stockfish = STOCKFISH();
+      var stockfish = new Worker('stockfish.asm.js')
       stockfish.onmessage = function(event) {
         let data = event.data ? event.data : event
         window.ReactNativeWebView.postMessage(data)
